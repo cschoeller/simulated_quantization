@@ -1,6 +1,7 @@
 import numpy as np
 
 np.random.seed(10)
+np.set_printoptions(suppress=True)
 
 
 NUM_FEATURES = 3
@@ -26,9 +27,9 @@ def compute_scale(x, n_bits=8):
     return (max_val - min_val) / (2**n_bits - 1)
    
    
-def quantize(x, s, n_bits=8):
-        signed_range = 2**(n_bits-1) - 1
-        return np.clip(np.round(x / s ), -signed_range, signed_range).astype(np.int8)
+def quantize(x, s):
+        signed_range = 2**7
+        return np.clip(np.round(x / s ), -signed_range, signed_range - 1).astype(np.int8)
 
 
 class LinLayer:
@@ -47,8 +48,9 @@ class QuantizedLinLayer:
         s_params = compute_scale([linear_layer.W, linear_layer.b])
         self.Wq = quantize(linear_layer.W, s_params)
         self.bq = quantize(linear_layer.b, s_params * s_calib)
-        self.s = s_params * s_calib
-        self.s_req = self._calibrate(x_calib)
+        s_req_precise = self._calibrate(x_calib)
+        self.s_req = np.round(s_req_precise).astype(np.int32)
+        self.output_scale = s_params * s_calib * s_req_precise
         
     def _apply_linear(self, xq):
         return np.matmul(xq.astype(np.int32), self.Wq.astype(np.int32)) + self.bq.astype(np.int32)
@@ -61,10 +63,6 @@ class QuantizedLinLayer:
         y = self._apply_linear(x_calib)
         return compute_scale(y)
     
-    @property
-    def output_scale(self):
-        return self.s * self.s_req
-
 
 def quantize_network(network, calib_data):
     quantized_network = []
@@ -92,12 +90,12 @@ print("\ntarget output: ", y)
 # large calibration set for statistical robustness
 calib_data = np.random.uniform(size=(BATCH_CALIB, NUM_FEATURES), low=VAL_MIN, high=VAL_MAX)
 quantized_network = quantize_network(network, calib_data)
-final_s = quantized_network[-1].output_scale
+final_s = quantized_network[-1].output_scale # last layer's scale factor
 
 # compute quantized network output and dequantize
 xs = compute_scale(x)
 xq = quantize(x, xs)
 yq = apply_network(quantized_network, xq)
-y_deq = quantized_network[-1].output_scale * yq.astype(np.float32)
+y_deq = final_s * yq.astype(np.float32)
 print("\ndequantized output: ", y_deq)
 print("\nquantization errors: ", np.abs(y - y_deq))

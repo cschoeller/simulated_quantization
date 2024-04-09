@@ -1,3 +1,5 @@
+"""Example for quantizing multiple dense layers without activations."""
+
 import numpy as np
 
 np.random.seed(10)

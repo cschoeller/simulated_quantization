@@ -4,12 +4,12 @@ np.random.seed(10)
 np.set_printoptions(suppress=True)
 
 
-NUM_FEATURES = 3
-HIDDEN_FEATURES = 15
-VAL_MIN = -10.
-VAL_MAX = 10.
-BATCH_INPUT = 5
-BATCH_CALIB = 10000
+_NUM_FEATURES = 3
+_HIDDEN_FEATURES = 15
+_VAL_MIN = -10.
+_VAL_MAX = 10.
+_BATCH_INPUT = 5
+_BATCH_CALIB = 10000
 
 
 def apply_network(network, x):
@@ -77,25 +77,26 @@ def quantize_network(network, calib_data):
     return quantized_network
 
 
-x = np.random.uniform(size=(BATCH_INPUT, NUM_FEATURES), low=VAL_MIN, high=VAL_MAX)
-network = [LinLayer(NUM_FEATURES, HIDDEN_FEATURES),
-           LinLayer(HIDDEN_FEATURES, HIDDEN_FEATURES),
-           LinLayer(HIDDEN_FEATURES, NUM_FEATURES)]
-print("input: ", x)
+if __name__ == "__main__":
+    x = np.random.uniform(size=(_BATCH_INPUT, _NUM_FEATURES), low=_VAL_MIN, high=_VAL_MAX)
+    network = [LinLayer(_NUM_FEATURES, _HIDDEN_FEATURES),
+            LinLayer(_HIDDEN_FEATURES, _HIDDEN_FEATURES),
+            LinLayer(_HIDDEN_FEATURES, _NUM_FEATURES)]
+    print("input: ", x)
 
-# regular forward pass
-y = apply_network(network, x)
-print("\ntarget output: ", y)
+    # regular forward pass
+    y = apply_network(network, x)
+    print("\ntarget output: ", y)
 
-# large calibration set for statistical robustness
-calib_data = np.random.uniform(size=(BATCH_CALIB, NUM_FEATURES), low=VAL_MIN, high=VAL_MAX)
-quantized_network = quantize_network(network, calib_data)
-final_s = quantized_network[-1].output_scale # last layer's scale factor
+    # large calibration set for statistical robustness
+    calib_data = np.random.uniform(size=(_BATCH_CALIB, _NUM_FEATURES), low=_VAL_MIN, high=_VAL_MAX)
+    quantized_network = quantize_network(network, calib_data)
+    final_s = quantized_network[-1].output_scale # last layer's scale factor
 
-# compute quantized network output and dequantize
-xs = compute_scale(x)
-xq = quantize(x, xs)
-yq = apply_network(quantized_network, xq)
-y_deq = final_s * yq.astype(np.float32)
-print("\ndequantized output: ", y_deq)
-print("\nquantization errors: ", np.abs(y - y_deq))
+    # compute quantized network output and dequantize
+    xs = compute_scale(x)
+    xq = quantize(x, xs)
+    yq = apply_network(quantized_network, xq)
+    y_deq = final_s * yq.astype(np.float32)
+    print("\ndequantized output: ", y_deq)
+    print("\nquantization errors: ", np.abs(y - y_deq))

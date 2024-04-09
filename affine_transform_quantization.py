@@ -1,3 +1,5 @@
+"""Minimum example for quantizing and dequantizing an affine transformation."""
+
 import numpy as np
 
 np.random.seed(42)
@@ -15,8 +17,6 @@ print("b: ", b)
 y = np.matmul(w, x) + b
 print("y: ", y)
 
-
-
 def quantize(x, max_val=255):
     return np.clip(np.round(x * max_val), 0, max_val).astype(np.int32)
 
@@ -30,15 +30,12 @@ print("xq", xq)
 print("wq", wq)
 print("bq", bq)
 
-
-
 yq = np.matmul(wq, xq) + bq
 print("yq: ", yq)
 
 scale = 1./255**2
 y_deq = scale * yq
 print("y_deq: ", y_deq)
-
 
 q_errors = np.abs(y_deq - y)
 print("")

@@ -78,16 +78,15 @@ class QuantizedLinLayer:
         self.Wq = quantize(linear_layer.W, s_params)
         self.bq = quantize(linear_layer.b, s_params * s_calib)
 
-        # compute scale factor for recalibration int float and int32
+        # compute scale factor for recalibration in float and int32
         # As we mostly get large values and a large scale factor in requantization,
         # converting the scale factor to int32 does not incur large inaccuracies. But it
-        # allows us to stay in int for the whole forward pass.
+        # allows us to stay in int for the whole forward pass, which is more efficient.
         s_req_precise = self._calibrate(x_calib)
-        print(s_req_precise)
         self.s_req = np.round(s_req_precise).astype(np.int32)
 
         # compute the final output scale factor, use the precise recalibration scale factor
-        self.output_scale = s_params * s_calib * s_req_precise
+        self.output_scale = s_calib * s_params * s_req_precise
         
     def _apply_linear(self, xq):
         """Apply the linear parameters and accumulate into int32."""
@@ -99,6 +98,7 @@ class QuantizedLinLayer:
         return quantize(yq, self.s_req) # requantize
                 
     def _calibrate(self, x_calib):
+        """Compute quantized output and based on it the requantization scale factor."""
         y = self._apply_linear(x_calib)
         return compute_scale(y)
     
